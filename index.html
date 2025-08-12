@@ -8,8 +8,8 @@
   :root{--bg:#0f1220;--card:#171a2b;--muted:#8fa0ff;--text:#e6e9ff;--ok:#1bd97b;--bad:#ff5d73;--warn:#ffb547;--btn:#3040ff;}
   *{box-sizing:border-box}
   body{margin:0;background:linear-gradient(180deg,#0d1020,#0b0e19);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
-  header{padding:16px 20px;border-bottom:1px solid #222846;background:#0c1020;position:sticky;top:0;z-index:2}
-  header h1{margin:0;font-size:20px;display:flex;gap:8px;align-items:center}
+  header{padding:12px 16px;border-bottom:1px solid #222846;background:#0c1020;position:sticky;top:0;z-index:2;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px;display:flex;gap:8px;align-items:center}
   header small{color:#aeb6ff;opacity:.9}
   .wrap{display:grid;grid-template-columns:380px 1fr 360px;gap:14px;padding:14px}
   .card{background:var(--card);border:1px solid #262a45;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
@@ -39,11 +39,16 @@
   .footnote{opacity:.7;font-size:12px;margin-top:8px}
   .hr{height:1px;background:#262b52;margin:10px 0}
   #roleSection[hidden]{display:none !important}
+  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
 </style>
 </head>
 <body>
   <header>
     <h1>《大时代｜The Great Times》 <small class="pill">文字模拟经营 · 回合制</small></h1>
+    <button id="btnSave" class="good">💾 存档</button>
+    <button id="btnLoad" class="warn">📂 读档</button>
+    <button id="btnReset" class="danger">🗑 新开局</button>
+    <span id="saveTip" class="pill">未存档</span>
   </header>
 
   <div class="wrap">
@@ -81,7 +86,7 @@
                 <input id="gambleAmt" type="number" min="0" step="100" placeholder="赌注(赌博)">
                 <button id="btnGamble" class="danger">赌博</button>
               </div>
-              <div class="footnote">胜率基础 45%，赌徒/黑道有加成</div>
+              <div class="footnote">胜率基础 45%，黑道有加成</div>
             </div>
 
             <div class="item">
@@ -103,6 +108,19 @@
                 <button id="btnPolitics">从政努力</button>
               </div>
               <div class="footnote">学生/律师/公务员/科学家有额外收益</div>
+            </div>
+
+            <!-- 事业体系统 -->
+            <div class="item">
+              <div class="row">
+                <select id="ventureCatalog"></select>
+                <button id="btnStartVenture" class="good">开办事业</button>
+              </div>
+              <div class="row">
+                <select id="ownedVenture"></select>
+                <button id="btnUpgradeVenture" class="warn">升级事业</button>
+              </div>
+              <div class="footnote">事业体每回合产出现金流；有维护费与小概率事故；职业有协同加成</div>
             </div>
 
             <div class="item">
@@ -128,7 +146,7 @@
       <div class="section">
         <div class="title">玩家状态</div>
         <div id="basic" class="grid">
-          <div><b>年份：</b><span id="year">—</span>　<b>回合：</b><span id="turn">—</span></div>
+          <div><b>年份：</b><span id="year">—</span>　<b>回合：</b><span id="turn">—</span> <span id="era" class="pill">—</span></div>
           <div class="stats">
             <div class="stat"><b id="funds">¥0</b><span class="muted">资金</span></div>
             <div class="stat"><b id="contacts">0</b><span class="muted">人脉</span></div>
@@ -141,6 +159,7 @@
             <div><b>目标：</b><span id="roleGoal">—</span></div>
             <div><b>资产：</b><span id="assetList">—</span></div>
             <div><b>负债：</b><span id="debtList">—</span></div>
+            <div><b>事业体：</b><span id="ventureList" class="mono">—</span></div>
             <div><b>胜利判定：</b><span id="vict">—</span></div>
           </div>
         </div>
@@ -166,11 +185,12 @@
   </div>
 
 <script>
-// ====== 随机工具 ======
+// ====== 通用工具 ======
 const rnd = (min, max)=>Math.random()*(max-min)+min;
 const rndi = (min,max)=>Math.floor(rnd(min,max+1));
 const pick = arr => arr[rndi(0,arr.length-1)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sum = arr => arr.reduce((a,b)=>a+b,0);
 
 // ====== 角色（12）======
 const roles = [
@@ -188,7 +208,33 @@ const roles = [
   {name:"走私商", funds:9000, contacts:40, assets:[], skill:"走私成功率+20%", goal:"控制沿海走私", tag:"smuggler"},
 ];
 
-// ====== 事件池（宏观/行业/个人 25/25/25）======
+// ====== 事业体目录 ======
+/*
+  字段：
+  id, name, cost(首期), upkeep(维护费/回合), baseIncome(基础产出/回合), risk(事故概率), synergy(职业tag加成), desc
+  升级：level从1起，upgradeCost = cost*0.6*level，收入=(baseIncome * (1+0.5*(level-1))) * (1+synergyBoost)
+*/
+const ventureCatalog = [
+  {id:"trade",  name:"贸易公司",   cost:8000,  upkeep:500,  baseIncome:2500, risk:0.06, synergy:["trader"],   desc:"接外贸单，受人脉影响"},
+  {id:"factory",name:"小型工厂",   cost:12000, upkeep:900,  baseIncome:3200, risk:0.05, synergy:["factory"],  desc:"代工/承包，稳定现金流"},
+  {id:"club",   name:"夜总会",     cost:10000, upkeep:1200, baseIncome:3800, risk:0.10, synergy:["mafia"],    desc:"高收益高风险，易被临检"},
+  {id:"media",  name:"媒体工作室", cost:7000,  upkeep:400,  baseIncome:2000, risk:0.05, synergy:["actor","idol"], desc:"广告/宣传/经纪"},
+  {id:"law",    name:"律所扩张部", cost:9000,  upkeep:600,  baseIncome:2600, risk:0.04, synergy:["lawyer"],  desc:"接案量提升"},
+  {id:"dev",    name:"地产开发部", cost:15000, upkeep:1100, baseIncome:4200, risk:0.07, synergy:["realty"],  desc:"滚动拿地/旧改"},
+  {id:"lab",    name:"科研工作室", cost:6000,  upkeep:500,  baseIncome:1800, risk:0.05, synergy:["scientist","student"], desc:"技术转化/专利"},
+  {id:"event",  name:"演出经纪部", cost:9000,  upkeep:500,  baseIncome:3000, risk:0.08, synergy:["idol","actor"], desc:"巡演/商演"},
+];
+
+const synergyBoost = 0.20;
+
+// ====== 年代段（影响事件池）======
+function currentEra(year){
+  if(year<=1989) return {key:"80s", label:"80年代"};
+  if(year<=1997) return {key:"90s", label:"90年代前期"};
+  return {key:"late90s", label:"90年代后期"};
+}
+
+// ====== 事件池（宏观/行业/个人，外加年代事件）======
 const macroEvents = [
   {desc:"国家宣布开放沿海港口，外贸机会大增", condition:null, effect:p=>{p.contacts+=5;}},
   {desc:"股市迎来第一轮牛市，股票普涨", condition:null, effect:p=>{p.funds*=1.25;}},
@@ -225,24 +271,24 @@ const industryEvents = [
   {desc:"演唱会爆满，票房破纪录", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=12000;p.reputation+=6;}},
   {desc:"拍摄的电影获奖，片酬上调", condition:p=>p.role.tag==="actor", effect:p=>{p.funds+=8000;p.reputation+=5;}},
   {desc:"影片票房惨败，投资亏损", condition:p=>p.role.tag==="actor", effect:p=>{p.funds-=6000;p.reputation-=3;}},
-  {desc:"夜总会遭临检，收入锐减", condition:p=>p.role.tag==="mafia", effect:p=>{p.funds-=4000;}},
+  {desc:"夜总会遭临检，收入锐减", condition:p=>p.role.tag==="mafia"||hasVenture("club"), effect:p=>{p.funds-=4000;}},
   {desc:"码头关系疏通，走私顺利", condition:p=>p.role.tag==="smuggler", effect:p=>{p.funds+=10000;}},
   {desc:"沿街门面涨租，成本上升", condition:null, effect:p=>{p.funds-=1500;}},
   {desc:"市区地块周边通地铁，地价上扬", condition:p=>p.assets.some(a=>a.includes("市区地块")), effect:p=>{p.funds+=7000;}},
   {desc:"郊区地块被征收，补偿到账", condition:p=>p.assets.some(a=>a.includes("郊区地块")), effect:p=>{p.funds+=6000;}},
   {desc:"拍到一宗优质旧改指标", condition:p=>p.role.tag==="realty", effect:p=>{p.assets.push("旧改项目指标");}},
-  {desc:"律所打赢大案，口碑爆升", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds+=11000;p.reputation+=8;}},
-  {desc:"官司失利，客户解约", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds-=5000;p.reputation-=4;}},
-  {desc:"科研成果获国际专利", condition:p=>p.role.tag==="scientist", effect:p=>{p.funds+=16000;p.reputation+=8;}},
-  {desc:"实验失败，设备报废", condition:p=>p.role.tag==="scientist", effect:p=>{p.funds-=7000;}},
+  {desc:"律所打赢大案，口碑爆升", condition:p=>p.role.tag==="lawyer"||hasVenture("law"), effect:p=>{p.funds+=11000;p.reputation+=8;}},
+  {desc:"官司失利，客户解约", condition:p=>p.role.tag==="lawyer"||hasVenture("law"), effect:p=>{p.funds-=5000;p.reputation-=4;}},
+  {desc:"科研成果获国际专利", condition:p=>p.role.tag==="scientist"||hasVenture("lab"), effect:p=>{p.funds+=16000;p.reputation+=8;}},
+  {desc:"实验失败，设备报废", condition:p=>p.role.tag==="scientist"||hasVenture("lab"), effect:p=>{p.funds-=7000;}},
   {desc:"学术会议报告成功，结识合作方", condition:p=>["scientist","student"].includes(p.role.tag), effect:p=>{p.contacts+=8;}},
   {desc:"政务考核优秀，调任要职", condition:p=>p.role.tag==="official", effect:p=>{p.contacts+=10;p.reputation+=6;}},
   {desc:"同僚内斗，被边缘化", condition:p=>p.role.tag==="official", effect:p=>{p.contacts-=6;p.reputation-=4;}},
-  {desc:"工厂机器故障，维修昂贵", condition:p=>p.assets.includes("中型工厂"), effect:p=>{p.funds-=4000;}},
+  {desc:"工厂机器故障，维修昂贵", condition:p=>p.assets.includes("中型工厂")||hasVenture("factory"), effect:p=>{p.funds-=4000;}},
   {desc:"购入的地块被曝纠纷，陷入诉讼", condition:p=>p.role.tag==="realty", effect:p=>{p.funds-=5000;p.reputation-=3;}},
-  {desc:"歌手商业代言到手", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=6000;p.contacts+=3;}},
-  {desc:"演出黄牛扰乱秩序，被罚整改", condition:p=>p.role.tag==="idol", effect:p=>{p.funds-=2000;}},
-  {desc:"夜场纠纷升级，黑白两道都来问话", condition:p=>p.role.tag==="mafia", effect:p=>{p.reputation-=6;}},
+  {desc:"歌手商业代言到手", condition:p=>p.role.tag==="idol"||hasVenture("event"), effect:p=>{p.funds+=6000;p.contacts+=3;}},
+  {desc:"演出黄牛扰乱秩序，被罚整改", condition:p=>p.role.tag==="idol"||hasVenture("event"), effect:p=>{p.funds-=2000;}},
+  {desc:"夜场纠纷升级，黑白两道都来问话", condition:p=>p.role.tag==="mafia"||hasVenture("club"), effect:p=>{p.reputation-=6;}},
 ];
 
 const personalEvents = [
@@ -273,18 +319,53 @@ const personalEvents = [
   {desc:"老友回城，带来商机线索", condition:null, effect:p=>{p.contacts+=6;}},
 ];
 
-// ====== 游戏状态 ======
-const game = {turn:1, year:1980, isOver:false, mood:0}; // mood影响股市
-const player = {role:null,funds:0,contacts:0,reputation:10,health:100,assets:[],debt:[],apMax:2,ap:2};
+// 年代事件
+const eraEventPools = {
+  "80s":[
+    {desc:"乡镇企业潮兴起，代工机会涌现", effect:p=>{p.funds+=2000;}},
+    {desc:"个体户牌照更易申请", effect:p=>{p.contacts+=2;}},
+    {desc:"电视机普及，广告行业起步", effect:p=>{if(hasVenture("media")) p.funds+=1500;}},
+  ],
+  "90s":[
+    {desc:"股份制改革讨论热烈，市场预期膨胀", effect:p=>{p.funds+=2500;}},
+    {desc:"南方特区吸引力上升，迁移成本下降", effect:p=>{p.contacts+=3;}},
+    {desc:"房地产开发热度升温", effect:p=>{if(hasVenture("dev")) p.funds+=3000;}},
+  ],
+  "late90s":[
+    {desc:"互联网概念抬头，媒体流量爆发", effect:p=>{if(hasVenture("media")) p.funds+=4000;p.reputation+=2;}},
+    {desc:"演出市场商业化，票务体系成型", effect:p=>{if(hasVenture("event")) p.funds+=3500;}},
+    {desc:"监管趋严，夜场经营门槛提高", effect:p=>{if(hasVenture("club")) p.funds-=2000;}},
+  ]
+};
 
-// ====== DOM ======
+// ====== 游戏状态 ======
+const SAVE_KEY="tgt_save_v1";
+const game = {turn:1, year:1980, isOver:false, mood:0};
+const player = {role:null,funds:0,contacts:0,reputation:10,health:100,assets:[],debt:[],apMax:2,ap:2, ventures:[]};
+
+// ====== DOM & UI ======
 const el = sel => document.querySelector(sel);
 const logBox = el("#log");
 function log(text, cls=""){ const li=document.createElement("li"); li.innerHTML=text; if(cls) li.classList.add(cls); logBox.prepend(li); const children = logBox.querySelectorAll("li"); if(children.length>20) children[children.length-1].remove(); }
 function fmtMoney(v){ return "¥"+Math.round(v).toLocaleString(); }
+
+function refreshVentureUI(){
+  // 事业目录
+  const cat = el("#ventureCatalog");
+  cat.innerHTML = ventureCatalog.map(v=>`<option value="${v.id}">${v.name}（首期${fmtMoney(v.cost)}｜维护${fmtMoney(v.upkeep)}｜基产${fmtMoney(v.baseIncome)}）</option>`).join("");
+  // 已有事业
+  const own = el("#ownedVenture");
+  if(player.ventures.length===0){ own.innerHTML = `<option value="">无可升级的事业</option>`; }
+  else{
+    own.innerHTML = player.ventures.map((v,i)=>`<option value="${i}">${v.name} Lv.${v.level}（维护${fmtMoney(v.upkeep)}）</option>`).join("");
+  }
+}
+
 function refresh(){
+  const eraObj = currentEra(game.year);
   el("#year").textContent = game.year;
   el("#turn").textContent = game.turn;
+  el("#era").textContent = eraObj.label;
   el("#funds").textContent = fmtMoney(player.funds);
   el("#contacts").textContent = Math.round(player.contacts);
   el("#rep").textContent = Math.round(player.reputation);
@@ -295,10 +376,16 @@ function refresh(){
   el("#assetList").textContent = player.assets.length?player.assets.join("，"):"—";
   el("#debtList").textContent = player.debt.length?player.debt.map((d,i)=>`${i+1}.${d.source}@${Math.round(d.interest*100)}%:${fmtMoney(d.amount)}(回合${d.turn})`).join("；"):"—";
   el("#apInfo").textContent = `AP ${player.ap}/${player.apMax}`;
+  el("#ventureList").textContent = player.ventures.length
+    ? player.ventures.map(v=>`${v.name} Lv.${v.level} ↑${fmtMoney(ventureIncomePreview(v))}/回`).join("； ")
+    : "—";
   el("#vict").textContent = victoryHint();
   el("#btnNext").disabled = !player.role || game.isOver;
+  refreshVentureUI();
 }
 function needAP(n=1){ if(player.ap<n){ log("行动力不足，本回合无法再行动","warn"); return false;} player.ap-=n; refresh(); return true;}
+
+function hasVenture(id){ return player.ventures.some(v=>v.id===id); }
 
 // ====== 初始角色 UI ======
 const roleGrid = el("#roleGrid");
@@ -319,6 +406,46 @@ function renderRoles(){
 }
 renderRoles();
 
+// ====== 存档/读档/新开局 ======
+function snapshot(){
+  return JSON.stringify({game, player, chosenIndex});
+}
+function loadFrom(obj){
+  Object.assign(game, obj.game);
+  Object.assign(player, obj.player);
+  chosenIndex = obj.chosenIndex ?? null;
+}
+function save(){
+  localStorage.setItem(SAVE_KEY, snapshot());
+  el("#saveTip").textContent = `已存档：回合${game.turn}`;
+  log("存档成功","good");
+}
+function load(){
+  const raw = localStorage.getItem(SAVE_KEY);
+  if(!raw){ log("没有找到存档","warn"); return; }
+  try{
+    const data = JSON.parse(raw);
+    loadFrom(data);
+    el("#roleSection").hidden = !!player.role; // 若已在游戏中，保持隐藏
+    log("读档成功","good");
+    refresh();
+  }catch(e){ log("读档失败","bad"); }
+}
+function resetGame(){
+  localStorage.removeItem(SAVE_KEY);
+  // 软重置到选角
+  Object.assign(game,{turn:1,year:1980,isOver:false,mood:0});
+  Object.assign(player,{role:null,funds:0,contacts:0,reputation:10,health:100,assets:[],debt:[],apMax:2,ap:2,ventures:[]});
+  chosenIndex = null;
+  el("#roleSection").hidden = false;
+  el("#saveTip").textContent = "未存档";
+  log("已重置为新开局","warn");
+  refresh();
+}
+el("#btnSave").onclick = save;
+el("#btnLoad").onclick = load;
+el("#btnReset").onclick = resetGame;
+
 // ====== 开始游戏（选完身份面板消失）======
 el("#btnStart").onclick = ()=>{
   if(chosenIndex==null){ log("请先选择一个身份","warn"); return; }
@@ -330,14 +457,42 @@ el("#btnStart").onclick = ()=>{
   player.reputation = 10;
   player.health = 100;
   player.debt = [];
+  player.ventures = [];
   game.turn = 1; game.year = 1980; game.isOver=false; player.apMax=2; player.ap=player.apMax; game.mood=0;
   log(`你选择了【${r.name}】。技能：${r.skill}，目标：${r.goal}`,"good");
-  // 隐藏角色选择区
   el("#roleSection").hidden = true;
   refresh();
 };
 
 // ====== 回合推进 ======
+function ventureIncomePreview(v){
+  const syn = v.synergy.includes(player.role?.tag) ? (1+synergyBoost) : 1;
+  const scale = 1 + 0.5*(v.level-1);
+  // 人脉/声望的小幅影响
+  const soft = 1 + clamp(player.contacts*0.001 + player.reputation*0.0005, -0.2, 0.4);
+  return Math.max(0, Math.round(v.baseIncome*scale*syn*soft) - v.upkeep);
+}
+
+function settleVentures(){
+  if(player.ventures.length===0) return 0;
+  let total = 0;
+  player.ventures.forEach(v=>{
+    // 基础产出
+    const income = ventureIncomePreview(v);
+    // 事故判定
+    if(Math.random()<v.risk){
+      const loss = rndi(800, 4000);
+      total += (income - loss);
+      log(`事业事故：${v.name} 遭遇突发情况，损失 ${fmtMoney(loss)}`,"bad");
+    }else{
+      total += income;
+    }
+  });
+  player.funds += total;
+  if(total!==0) log(`事业体结算：本回合净收益 ${fmtMoney(total)}`, total>=0?"good":"bad");
+  return total;
+}
+
 function triggerEvents(){
   const pools = [macroEvents, industryEvents, personalEvents];
   pools.forEach(pool=>{
@@ -347,6 +502,14 @@ function triggerEvents(){
     ev.effect(player);
     log(`事件：${ev.desc}`);
   });
+  // 年代事件额外+1
+  const eraKey = currentEra(game.year).key;
+  const eraPool = eraEventPools[eraKey];
+  if(eraPool && eraPool.length){
+    const e = pick(eraPool);
+    e.effect(player);
+    log(`【年代】${e.desc}`,"warn");
+  }
   // 情绪（影响股市波动中枢）
   game.mood = clamp(game.mood + rndi(-1,1), -2, 2);
 }
@@ -362,10 +525,14 @@ function endTurnCheck(){
 
 function nextTurn(){
   if(!player.role){ log("请先选择身份并开始游戏","warn"); return; }
-  if(game.isOver){ log("游戏已结束，请刷新页面重新开始","warn"); return; }
+  if(game.isOver){ log("游戏已结束，请刷新/新开局","warn"); return; }
   game.turn++; game.year++;
   player.ap = player.apMax; // 恢复行动点
+  // 先结算事业体
+  settleVentures();
+  // 回合随机事件
   triggerEvents();
+  // 自然恢复
   player.health = clamp(player.health + 3 + (player.role.tag==="scientist"?1:0), 0, 120);
   endTurnCheck();
   refresh();
@@ -378,16 +545,16 @@ function checkVictory(){
   const has = name => player.assets.some(a=>a.includes(name));
   switch(player.role.tag){
     case "student": return r>=30 && c>=20 && (has("实验室")||f>=50000);
-    case "trader":  return f>=1000000/10; // 缩放
-    case "mafia":   return c>=120 && r>=25;
-    case "realty":  return player.assets.filter(a=>a.includes("地块")).length>=4 && f>=300000/10;
-    case "idol":    return c>=80 && r>=60 && f>=200000/10;
+    case "trader":  return f>=1000000/10 || hasVenture("trade") && player.ventures.find(v=>v.id==="trade")?.level>=3;
+    case "mafia":   return c>=120 && r>=25 && (hasVenture("club")||player.assets.some(a=>/夜/.test(a)));
+    case "realty":  return player.assets.filter(a=>a.includes("地块")).length>=4 && f>=300000/10 || hasVenture("dev")&&player.ventures.find(v=>v.id==="dev")?.level>=3;
+    case "idol":    return c>=80 && r>=60 && (hasVenture("event")||hasVenture("media"));
     case "martial": return c>=70 && r>=50;
     case "official":return r>=70 && c>=90;
-    case "factory": return f>=500000/10 && has("中型工厂");
-    case "lawyer":  return f>=300000/10 && r>=60;
-    case "scientist":return r>=75 && f>=200000/10;
-    case "actor":   return r>=70 && c>=80;
+    case "factory": return f>=500000/10 && (has("中型工厂")||hasVenture("factory"));
+    case "lawyer":  return f>=300000/10 && r>=60 && (hasVenture("law"));
+    case "scientist":return r>=75 && (f>=200000/10 || hasVenture("lab"));
+    case "actor":   return r>=70 && c>=80 && (hasVenture("media")||hasVenture("event"));
     case "smuggler":return f>=500000/10 && c>=80;
   }
   return false;
@@ -447,7 +614,7 @@ el("#btnGamble").onclick = ()=>{
   const amt = +el("#gambleAmt").value||0;
   if(amt<=0 || amt>player.funds){ log("赌注非法或不足","warn"); return; }
   let winRate = 0.45;
-  if(player.role.tag==="gambler" || player.role.tag==="mafia") winRate += 0.1; // 这里只对黑道加成
+  if(player.role.tag==="mafia") winRate += 0.1;
   const win = Math.random()<winRate;
   const mult = win ? rnd(0.5,1.5) : -rnd(0.3,1.0);
   const delta = Math.round(amt*mult);
@@ -552,7 +719,7 @@ el("#btnBorrow").onclick = ()=>{
 el("#btnRepay").onclick = ()=>{
   if(player.debt.length===0){ log("当前无负债","warn"); return; }
   const d = player.debt[0];
-  const total = Math.round(d.amount*(1)); // 已在回合末计息
+  const total = Math.round(d.amount*(1));
   if(player.funds<total){ log(`资金不足以偿还首笔债务：需 ${fmtMoney(total)}`,"warn"); return; }
   player.funds -= total;
   player.debt.shift();
@@ -560,8 +727,43 @@ el("#btnRepay").onclick = ()=>{
   refresh();
 };
 
+// ====== 事业体：开办与升级 ======
+el("#btnStartVenture").onclick = ()=>{
+  if(!needAP(1)) return;
+  const id = el("#ventureCatalog").value;
+  const tpl = ventureCatalog.find(v=>v.id===id);
+  if(!tpl) return;
+  if(player.funds<tpl.cost){ log("资金不足，无法开办该事业","warn"); return; }
+  if(player.ventures.some(v=>v.id===id)){ log("该事业已拥有，可考虑升级","warn"); return; }
+  player.funds -= tpl.cost;
+  player.ventures.push({id:tpl.id,name:tpl.name,level:1,baseIncome:tpl.baseIncome,upkeep:tpl.upkeep,risk:tpl.risk,synergy:tpl.synergy});
+  log(`开办事业：${tpl.name}（首期 ${fmtMoney(tpl.cost)}）`,"good");
+  refresh();
+};
+
+el("#btnUpgradeVenture").onclick = ()=>{
+  if(!needAP(1)) return;
+  if(player.ventures.length===0){ log("暂无可升级事业","warn"); return; }
+  const idx = +el("#ownedVenture").value;
+  if(isNaN(idx) || idx<0 || idx>=player.ventures.length){ log("请选择要升级的事业","warn"); return; }
+  const v = player.ventures[idx];
+  const baseCost = ventureCatalog.find(t=>t.id===v.id)?.cost || 8000;
+  const upgCost = Math.round(baseCost*0.6*v.level);
+  if(player.funds<upgCost){ log(`资金不足，升级需要 ${fmtMoney(upgCost)}`,"warn"); return; }
+  player.funds -= upgCost;
+  v.level += 1;
+  // 升级同时略增维护费
+  v.upkeep = Math.round(v.upkeep*(1+0.15));
+  log(`升级事业：${v.name} → Lv.${v.level}（花费 ${fmtMoney(upgCost)}）`,"good");
+  refresh();
+};
+
 // ====== 初始化 ======
-refresh();
+function init(){
+  refresh();
+  refreshVentureUI();
+}
+init();
 </script>
 </body>
 </html>
