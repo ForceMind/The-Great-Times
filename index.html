@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>大时代｜The Great Times</title>
 <style>
-  :root{--bg:#0f1220;--card:#171a2b;--muted:#8fa0ff;--text:#e6e9ff;--ok:#1bd97b;--bad:#ff5d73;--warn:#ffb547;--btn:#3040ff;}
+  :root{
+    --bg:#0f1220;--card:#171a2b;--muted:#8fa0ff;--text:#e6e9ff;--ok:#1bd97b;--bad:#ff5d73;--warn:#ffb547;--btn:#3040ff;
+  }
   *{box-sizing:border-box}
   body{margin:0;background:linear-gradient(180deg,#0d1020,#0b0e19);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
   header{padding:16px 20px;border-bottom:1px solid #222846;background:#0c1020;position:sticky;top:0;z-index:2}
@@ -38,7 +40,6 @@
   .role.active{outline:2px solid var(--muted);border-color:#5564ff}
   .footnote{opacity:.7;font-size:12px;margin-top:8px}
   .hr{height:1px;background:#262b52;margin:10px 0}
-  #roleSection[hidden]{display:none !important}
 </style>
 </head>
 <body>
@@ -91,7 +92,7 @@
                   <option value="市区地块|20000">市区地块（¥20,000）</option>
                 </select>
                 <button id="btnBuyLand">买地皮</button>
-                <button id="btnSellAsset">卖资产</button>
+                <button id="btnSellAsset" class="">卖资产</button>
               </div>
               <div class="footnote">地产在事件中可能暴涨；卖出按当前估值</div>
             </div>
@@ -146,8 +147,8 @@
         </div>
       </div>
 
-      <div class="section" id="roleSection">
-        <div class="title">角色选择（12）</div>
+      <div class="section">
+        <div class="title">角色选择</div>
         <div class="role-grid" id="roleGrid"></div>
         <div class="row" style="margin-top:8px;">
           <button id="btnStart" class="primary">开始游戏</button>
@@ -172,105 +173,98 @@ const rndi = (min,max)=>Math.floor(rnd(min,max+1));
 const pick = arr => arr[rndi(0,arr.length-1)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-// ====== 角色（12）======
+// ====== 角色（20）======
 const roles = [
   {name:"学生", funds:1000, contacts:10, assets:[], skill:"学习效率+20%", goal:"考上名校/入科研", tag:"student"},
-  {name:"外贸商人", funds:12000, contacts:30, assets:["进出口渠道"], skill:"进出口成本-10%", goal:"年出口额>1000万(缩放)", tag:"trader"},
-  {name:"黑道大哥", funds:6000, contacts:50, assets:[], skill:"恐吓成功率+30%", goal:"控制全城地下势力", tag:"mafia"},
+  {name:"外贸商人", funds:10000, contacts:30, assets:["进出口渠道"], skill:"进出口成本-10%", goal:"年出口额>1000万", tag:"trader"},
+  {name:"黑道大哥", funds:5000, contacts:50, assets:[], skill:"恐吓成功率+30%", goal:"控制全城地下势力", tag:"mafia"},
   {name:"地产商", funds:20000, contacts:25, assets:["旧厂房"], skill:"土地收购价-15%", goal:"垄断市中心商圈", tag:"realty"},
-  {name:"唱歌明星", funds:9000, contacts:20, assets:["录音棚"], skill:"演唱会收入+20%", goal:"国内销量冠军+出海巡演", tag:"idol"},
+  {name:"唱歌明星", funds:8000, contacts:20, assets:["录音棚"], skill:"演唱会收入+20%", goal:"国内销量冠军+出海巡演", tag:"idol"},
   {name:"武术家", funds:3000, contacts:15, assets:[], skill:"格斗事件成功率+40%", goal:"国际武馆连锁", tag:"martial"},
   {name:"公务员", funds:5000, contacts:35, assets:[], skill:"政策信息提前获知", goal:"晋升为市长", tag:"official"},
-  {name:"厂长", funds:16000, contacts:30, assets:["中型工厂"], skill:"生产成本-10%", goal:"全国最大工业企业", tag:"factory"},
+  {name:"记者", funds:4000, contacts:20, assets:["新闻社关系"], skill:"信息收集+30%", goal:"揭露全国轰动大案", tag:"reporter"},
+  {name:"厂长", funds:15000, contacts:30, assets:["中型工厂"], skill:"生产成本-10%", goal:"全国最大工业企业", tag:"factory"},
+  {name:"医生", funds:5000, contacts:15, assets:["诊所"], skill:"健康恢复+20%", goal:"国际医疗中心", tag:"doctor"},
   {name:"律师", funds:8000, contacts:20, assets:["律所"], skill:"打官司胜率+25%", goal:"全国知名大律师", tag:"lawyer"},
-  {name:"科学家", funds:4500, contacts:15, assets:["实验室"], skill:"研发速度+20%", goal:"突破性发明", tag:"scientist"},
-  {name:"演员", funds:6000, contacts:25, assets:["剧组关系"], skill:"片酬+15%", goal:"国际影帝/后", tag:"actor"},
-  {name:"走私商", funds:9000, contacts:40, assets:[], skill:"走私成功率+20%", goal:"控制沿海走私", tag:"smuggler"},
+  {name:"作家", funds:3000, contacts:10, assets:[], skill:"出版收益+30%", goal:"国际文学大奖", tag:"writer"},
+  {name:"科学家", funds:4000, contacts:15, assets:["实验室"], skill:"研发速度+20%", goal:"突破性发明", tag:"scientist"},
+  {name:"赌徒", funds:2000, contacts:15, assets:[], skill:"赌博胜率+10%", goal:"赢下千万赌资", tag:"gambler"},
+  {name:"走私商", funds:8000, contacts:40, assets:[], skill:"走私成功率+20%", goal:"控制沿海走私", tag:"smuggler"},
+  {name:"画家", funds:2000, contacts:10, assets:[], skill:"艺术品价值+25%", goal:"拍卖价破千万", tag:"painter"},
+  {name:"演员", funds:5000, contacts:25, assets:["剧组关系"], skill:"片酬+15%", goal:"国际影帝/后", tag:"actor"},
+  {name:"教师", funds:3000, contacts:15, assets:[], skill:"培养人才+20%", goal:"学生夺国际大奖", tag:"teacher"},
+  {name:"渔民", funds:2000, contacts:10, assets:["渔船"], skill:"渔获+25%", goal:"远洋渔业公司", tag:"fisher"},
+  {name:"农场主", funds:4000, contacts:15, assets:["农田"], skill:"产量+20%", goal:"全国最大农场主", tag:"farmer"},
 ];
 
-// ====== 事件池（宏观/行业/个人 25/25/25）======
+// ====== 事件池（宏观/行业/个人 20/20/20）======
 const macroEvents = [
   {desc:"国家宣布开放沿海港口，外贸机会大增", condition:null, effect:p=>{p.contacts+=5;}},
-  {desc:"股市迎来第一轮牛市，股票普涨", condition:null, effect:p=>{p.funds*=1.25;}},
-  {desc:"股市暴跌，投资者损失惨重", condition:null, effect:p=>{p.funds*=0.82;}},
-  {desc:"人民币汇率调整，出口企业受益", condition:p=>p.role.tag==="trader", effect:p=>{p.funds+=6000;}},
-  {desc:"房地产试点拍卖启动", condition:p=>p.role.tag==="realty", effect:p=>{p.assets.push("市区地块");}},
-  {desc:"基建投资加码，承包商订单涌入", condition:p=>p.role.tag==="factory", effect:p=>{p.funds+=6000;}},
-  {desc:"法律制度改革，律师需求激增", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds+=5000;}},
-  {desc:"科研经费提高，重点项目立项", condition:p=>["scientist","student"].includes(p.role.tag), effect:p=>{p.funds+=3000;}},
-  {desc:"严打黑社会，夜场巡查频繁", condition:p=>p.role.tag==="mafia", effect:p=>{p.contacts-=10;p.funds-=3000;p.reputation-=5;}},
-  {desc:"电影市场复苏，文娱回暖", condition:p=>["actor","idol"].includes(p.role.tag), effect:p=>{p.funds+=3500;}},
-  {desc:"港澳资本涌入，社会融资更易", condition:null, effect:p=>{p.contacts+=3;}},
-  {desc:"国际油价大涨，运输成本上升", condition:null, effect:p=>{p.funds-=1800;}},
-  {desc:"国际金价暴涨，避险情绪升温", condition:null, effect:p=>{p.funds+=2500;}},
-  {desc:"城市更新试点，旧改机会出现", condition:p=>p.role.tag==="realty", effect:p=>{p.assets.push("旧城区改造指标");}},
-  {desc:"教育扩招试点，高校名额增加", condition:p=>p.role.tag==="student", effect:p=>{p.reputation+=5;}},
-  {desc:"贸易伙伴加征关税，外贸承压", condition:p=>p.role.tag==="trader", effect:p=>{p.funds-=4000;}},
-  {desc:"文化审查趋严，演出审批放缓", condition:p=>p.role.tag==="idol", effect:p=>{p.funds-=2000;}},
-  {desc:"科技下乡，科研转化政策推出", condition:p=>p.role.tag==="scientist", effect:p=>{p.contacts+=5;p.reputation+=4;}},
-  {desc:"地方招商引资，民企税收优惠", condition:null, effect:p=>{p.funds+=1500;p.contacts+=2;}},
-  {desc:"治安恶化，夜间经营风险增", condition:null, effect:p=>{p.funds-=1000;}},
-  {desc:"农村包产到户深化，个体经济活跃", condition:null, effect:p=>{p.funds+=1200;}},
-  {desc:"城市户籍试点改革，人才流动性提高", condition:null, effect:p=>{p.contacts+=2;}},
-  {desc:"知识分子地位提升，媒体正向宣传", condition:p=>["scientist","student","lawyer"].includes(p.role.tag), effect:p=>{p.reputation+=6;}},
-  {desc:"外汇管制调整，结汇更便利", condition:p=>p.role.tag==="trader", effect:p=>{p.contacts+=3;}},
-  {desc:"港口整治，走私通道被严查", condition:p=>p.role.tag==="smuggler", effect:p=>{p.funds-=5000;p.reputation-=4;}},
+  {desc:"股市迎来第一轮牛市，股票普涨", condition:null, effect:p=>{p.funds*=1.3;}},
+  {desc:"股市暴跌，投资者损失惨重", condition:null, effect:p=>{p.funds*=0.8;}},
+  {desc:"人民币汇率调整，出口企业受益", condition:p=>p.role.name==="外贸商人", effect:p=>{p.funds+=5000;}},
+  {desc:"房地产试点拍卖启动", condition:p=>p.role.name==="地产商", effect:p=>{p.assets.push("市区地块");}},
+  {desc:"全国粮食丰收，农产品降价", condition:p=>p.role.tag==="farmer", effect:p=>{p.funds-=1000;}},
+  {desc:"全国粮食歉收，农产品涨价", condition:p=>p.role.tag==="farmer", effect:p=>{p.funds+=5000;}},
+  {desc:"严打黑社会行动", condition:p=>p.role.tag==="mafia", effect:p=>{p.contacts-=10;p.funds-=2000;p.reputation-=5;}},
+  {desc:"电影市场复苏，文娱回暖", condition:p=>["演员","唱歌明星"].includes(p.role.name), effect:p=>{p.funds+=3000;}},
+  {desc:"改革开放新政，民营经济受鼓舞", condition:null, effect:p=>{p.contacts+=5;p.funds+=2000;}},
+  {desc:"国际油价大涨，运输成本上升", condition:null, effect:p=>{p.funds-=1500;}},
+  {desc:"国际金价暴涨", condition:null, effect:p=>{p.funds+=3000;}},
+  {desc:"国家基建投资，承包商获利", condition:p=>p.role.tag==="factory", effect:p=>{p.funds+=5000;}},
+  {desc:"港澳资本流入，融资更易", condition:null, effect:p=>{p.contacts+=3;}},
+  {desc:"外资进入娱乐产业", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=5000;}},
+  {desc:"科研经费提高", condition:p=>["科学家","学生"].includes(p.role.name), effect:p=>{p.funds+=2000;}},
+  {desc:"法律制度改革，律师需求激增", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds+=4000;}},
+  {desc:"国际体育赛事举办，武术受益", condition:p=>p.role.tag==="martial", effect:p=>{p.contacts+=5;p.funds+=3000;}},
+  {desc:"乡镇企业改革，机会增多", condition:null, effect:p=>{p.funds+=1000;p.contacts+=2;}},
+  {desc:"社会治安恶化，夜间经营风险增", condition:null, effect:p=>{p.funds-=1000;}}
 ];
 
 const industryEvents = [
-  {desc:"你的工厂获港商投资", condition:p=>p.role.tag==="factory"||p.assets.includes("中型工厂"), effect:p=>{p.funds+=12000;p.contacts+=5;}},
-  {desc:"一批进口货被海关扣押", condition:p=>p.role.tag==="trader", effect:p=>{p.funds-=5000;}},
-  {desc:"外贸订单暴增，连夜赶工", condition:p=>p.role.tag==="trader", effect:p=>{p.funds+=9000;p.health-=8;}},
-  {desc:"承包工程质量过硬，追加合同", condition:p=>p.assets.includes("中型工厂"), effect:p=>{p.funds+=7000;p.reputation+=3;}},
-  {desc:"演唱会爆满，票房破纪录", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=12000;p.reputation+=6;}},
-  {desc:"拍摄的电影获奖，片酬上调", condition:p=>p.role.tag==="actor", effect:p=>{p.funds+=8000;p.reputation+=5;}},
-  {desc:"影片票房惨败，投资亏损", condition:p=>p.role.tag==="actor", effect:p=>{p.funds-=6000;p.reputation-=3;}},
-  {desc:"夜总会遭临检，收入锐减", condition:p=>p.role.tag==="mafia", effect:p=>{p.funds-=4000;}},
-  {desc:"码头关系疏通，走私顺利", condition:p=>p.role.tag==="smuggler", effect:p=>{p.funds+=10000;}},
-  {desc:"沿街门面涨租，成本上升", condition:null, effect:p=>{p.funds-=1500;}},
-  {desc:"市区地块周边通地铁，地价上扬", condition:p=>p.assets.some(a=>a.includes("市区地块")), effect:p=>{p.funds+=7000;}},
-  {desc:"郊区地块被征收，补偿到账", condition:p=>p.assets.some(a=>a.includes("郊区地块")), effect:p=>{p.funds+=6000;}},
-  {desc:"拍到一宗优质旧改指标", condition:p=>p.role.tag==="realty", effect:p=>{p.assets.push("旧改项目指标");}},
-  {desc:"律所打赢大案，口碑爆升", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds+=11000;p.reputation+=8;}},
-  {desc:"官司失利，客户解约", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds-=5000;p.reputation-=4;}},
-  {desc:"科研成果获国际专利", condition:p=>p.role.tag==="scientist", effect:p=>{p.funds+=16000;p.reputation+=8;}},
-  {desc:"实验失败，设备报废", condition:p=>p.role.tag==="scientist", effect:p=>{p.funds-=7000;}},
-  {desc:"学术会议报告成功，结识合作方", condition:p=>["scientist","student"].includes(p.role.tag), effect:p=>{p.contacts+=8;}},
-  {desc:"政务考核优秀，调任要职", condition:p=>p.role.tag==="official", effect:p=>{p.contacts+=10;p.reputation+=6;}},
-  {desc:"同僚内斗，被边缘化", condition:p=>p.role.tag==="official", effect:p=>{p.contacts-=6;p.reputation-=4;}},
-  {desc:"工厂机器故障，维修昂贵", condition:p=>p.assets.includes("中型工厂"), effect:p=>{p.funds-=4000;}},
-  {desc:"购入的地块被曝纠纷，陷入诉讼", condition:p=>p.role.tag==="realty", effect:p=>{p.funds-=5000;p.reputation-=3;}},
-  {desc:"歌手商业代言到手", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=6000;p.contacts+=3;}},
-  {desc:"演出黄牛扰乱秩序，被罚整改", condition:p=>p.role.tag==="idol", effect:p=>{p.funds-=2000;}},
-  {desc:"夜场纠纷升级，黑白两道都来问话", condition:p=>p.role.tag==="mafia", effect:p=>{p.reputation-=6;}},
+  {desc:"你的餐厅被美食杂志报道，生意暴增", condition:null, effect:p=>{p.funds+=2000;}},
+  {desc:"工厂机器故障，维修昂贵", condition:p=>p.assets.includes("中型工厂"), effect:p=>{p.funds-=3000;}},
+  {desc:"一批进口货被海关扣押", condition:p=>p.role.tag==="trader", effect:p=>{p.funds-=4000;}},
+  {desc:"农田丰收，收入翻倍", condition:p=>p.role.tag==="farmer", effect:p=>{p.funds+=5000;}},
+  {desc:"演唱会爆满，票房破纪录", condition:p=>p.role.tag==="idol", effect:p=>{p.funds+=8000;}},
+  {desc:"港口走私顺利脱手", condition:p=>p.role.tag==="smuggler", effect:p=>{p.funds+=7000;}},
+  {desc:"收保护费被警方盯上", condition:p=>p.role.tag==="mafia", effect:p=>{p.funds-=3000;p.contacts-=5;}},
+  {desc:"一幅画意外拍出高价", condition:p=>p.role.tag==="painter", effect:p=>{p.funds+=10000;}},
+  {desc:"影片获国际奖项", condition:p=>p.role.tag==="actor", effect:p=>{p.funds+=5000;p.contacts+=5;}},
+  {desc:"科研成果获国际专利", condition:p=>p.role.tag==="scientist", effect:p=>{p.funds+=15000;}},
+  {desc:"你的学生夺得国际金牌", condition:p=>p.role.tag==="teacher", effect:p=>{p.contacts+=10;p.reputation+=3;}},
+  {desc:"渔获创历史新高", condition:p=>p.role.tag==="fisher", effect:p=>{p.funds+=4000;}},
+  {desc:"港商投资你的工厂", condition:p=>p.assets.includes("中型工厂"), effect:p=>{p.funds+=10000;p.contacts+=5;}},
+  {desc:"你的书被改编电影", condition:p=>p.role.tag==="writer", effect:p=>{p.funds+=8000;p.contacts+=3;}},
+  {desc:"某块地皮暴涨", condition:p=>p.assets.some(a=>a.includes("地块")||a.includes("地")), effect:p=>{p.funds+=6000;}},
+  {desc:"妙手回春救下名人，声望大增", condition:p=>p.role.tag==="doctor", effect:p=>{p.contacts+=10;p.reputation+=5;}},
+  {desc:"打赢大案，律师费暴增", condition:p=>p.role.tag==="lawyer", effect:p=>{p.funds+=10000;}},
+  {desc:"投资的影片票房惨败", condition:p=>p.role.tag==="actor", effect:p=>{p.funds-=5000;}},
+  {desc:"赌桌一夜暴富", condition:p=>p.role.tag==="gambler", effect:p=>{p.funds+=15000;}},
+  {desc:"赌局惨败，血本无归", condition:p=>p.role.tag==="gambler", effect:p=>{p.funds-=10000;}}
 ];
 
 const personalEvents = [
   {desc:"亲戚求助，需要一笔钱", condition:null, effect:p=>{p.funds-=2000;}},
+  {desc:"健康恶化，需要住院", condition:null, effect:p=>{p.health-=20;p.funds-=3000;}},
   {desc:"拾金不昧被报道，人缘上升", condition:null, effect:p=>{p.contacts+=5;p.reputation+=3;}},
   {desc:"意外受伤，行动力下降", condition:null, effect:p=>{p.health-=15;}},
   {desc:"朋友介绍你认识一位官员", condition:null, effect:p=>{p.contacts+=5;}},
-  {desc:"孩子出生，生活开销增加", condition:null, effect:p=>{p.funds-=1200;}},
-  {desc:"获得一笔遗产", condition:null, effect:p=>{p.funds+=6000;}},
+  {desc:"孩子出生，生活开销增加", condition:null, effect:p=>{p.funds-=1000;}},
+  {desc:"获得一笔遗产", condition:null, effect:p=>{p.funds+=5000;}},
   {desc:"家中失窃", condition:null, effect:p=>{p.funds-=2000;}},
-  {desc:"被小偷偷走钱包", condition:null, effect:p=>{p.funds-=800;}},
+  {desc:"被小偷偷走钱包", condition:null, effect:p=>{p.funds-=500;}},
   {desc:"重感冒，需要休息", condition:null, effect:p=>{p.health-=10;}},
-  {desc:"中了福利彩票", condition:null, effect:p=>{p.funds+=4000;}},
-  {desc:"投资朋友项目失败", condition:null, effect:p=>{p.funds-=4500;}},
-  {desc:"朋友归还旧欠款", condition:null, effect:p=>{p.funds+=2500;}},
+  {desc:"中了福利彩票", condition:null, effect:p=>{p.funds+=3000;}},
+  {desc:"投资朋友项目失败", condition:null, effect:p=>{p.funds-=4000;}},
+  {desc:"流感来袭，状态下滑", condition:null, effect:p=>{p.health-=10;}},
+  {desc:"朋友归还旧欠款", condition:null, effect:p=>{p.funds+=2000;}},
   {desc:"街头救人再上新闻", condition:null, effect:p=>{p.contacts+=3;p.reputation+=5;}},
-  {desc:"醉酒闹事被抓", condition:null, effect:p=>{p.funds-=1500;p.reputation-=5;}},
-  {desc:"赌场手气不错", condition:null, effect:p=>{p.funds+=2500;}},
-  {desc:"赌场手气很差", condition:null, effect:p=>{p.funds-=2500;}},
+  {desc:"醉酒闹事被抓", condition:null, effect:p=>{p.funds-=1000;p.reputation-=5;}},
+  {desc:"赌场手气不错", condition:null, effect:p=>{p.funds+=2000;}},
+  {desc:"赌场手气很差", condition:null, effect:p=>{p.funds-=2000;}},
   {desc:"淘到古董，可能升值", condition:null, effect:p=>{p.assets.push("古董");}},
-  {desc:"误买赝品，亏损惨重", condition:null, effect:p=>{p.funds-=1800;}},
-  {desc:"体检发现旧疾，长期调养", condition:null, effect:p=>{p.health-=8;p.reputation+=1;}},
-  {desc:"志愿活动获好评，结识社会贤达", condition:null, effect:p=>{p.contacts+=4;p.reputation+=4;}},
-  {desc:"被同行诬告，清白终还但耗费心力", condition:null, effect:p=>{p.funds-=1200;p.health-=5;p.reputation+=2;}},
-  {desc:"邻里矛盾调解成功", condition:null, effect:p=>{p.reputation+=3;}},
-  {desc:"被卷入民间借贷担保，压力山大", condition:null, effect:p=>{p.funds-=2000;p.reputation-=2;}},
-  {desc:"一夜暴富的传言让你被围堵借钱", condition:null, effect:p=>{p.contacts-=3;p.reputation-=2;}},
-  {desc:"老友回城，带来商机线索", condition:null, effect:p=>{p.contacts+=6;}},
+  {desc:"误买赝品，亏损惨重", condition:null, effect:p=>{p.funds-=1500;}}
 ];
 
 // ====== 游戏状态 ======
@@ -280,7 +274,11 @@ const player = {role:null,funds:0,contacts:0,reputation:10,health:100,assets:[],
 // ====== DOM ======
 const el = sel => document.querySelector(sel);
 const logBox = el("#log");
-function log(text, cls=""){ const li=document.createElement("li"); li.innerHTML=text; if(cls) li.classList.add(cls); logBox.prepend(li); const children = logBox.querySelectorAll("li"); if(children.length>20) children[children.length-1].remove(); }
+function log(text, cls=""){ const li=document.createElement("li"); li.innerHTML=text; if(cls) li.classList.add(cls); logBox.prepend(li); // 最新在上
+  // 限制 20 条
+  const children = logBox.querySelectorAll("li");
+  if(children.length>20) children[children.length-1].remove();
+}
 function fmtMoney(v){ return "¥"+Math.round(v).toLocaleString(); }
 function refresh(){
   el("#year").textContent = game.year;
@@ -319,7 +317,7 @@ function renderRoles(){
 }
 renderRoles();
 
-// ====== 开始游戏（选完身份面板消失）======
+// ====== 开始游戏 ======
 el("#btnStart").onclick = ()=>{
   if(chosenIndex==null){ log("请先选择一个身份","warn"); return; }
   const r = roles[chosenIndex];
@@ -332,8 +330,6 @@ el("#btnStart").onclick = ()=>{
   player.debt = [];
   game.turn = 1; game.year = 1980; game.isOver=false; player.apMax=2; player.ap=player.apMax; game.mood=0;
   log(`你选择了【${r.name}】。技能：${r.skill}，目标：${r.goal}`,"good");
-  // 隐藏角色选择区
-  el("#roleSection").hidden = true;
   refresh();
 };
 
@@ -341,6 +337,7 @@ el("#btnStart").onclick = ()=>{
 function triggerEvents(){
   const pools = [macroEvents, industryEvents, personalEvents];
   pools.forEach(pool=>{
+    // 尝试找一个满足条件的，否则退化为随机
     let candidates = pool.filter(e=>!e.condition || e.condition(player));
     if(candidates.length===0) candidates = pool;
     const ev = pick(candidates);
@@ -352,21 +349,28 @@ function triggerEvents(){
 }
 
 function endTurnCheck(){
+  // 基础衰减/恢复
   player.health = clamp(player.health, 0, 120);
   if(player.health<=0){ game.isOver=true; log("你因健康问题去世，游戏结束","bad"); }
   if(player.funds< -5000 && player.assets.length===0){ game.isOver=true; log("你资不抵债且无资产，破产 Game Over","bad"); }
   // 债务利息（每回合计息一次）
-  player.debt.forEach(d=>{ const age = game.turn - d.turn; if(age>=1){ d.amount = Math.round(d.amount*(1+d.interest)); d.turn=game.turn; }});
+  player.debt.forEach(d=>{
+    const age = game.turn - d.turn;
+    if(age>=1){ d.amount = Math.round(d.amount*(1+d.interest)); d.turn=game.turn; }
+  });
+  // 胜利判定
   if(checkVictory()){ game.isOver=true; log("你已达成身份目标！恭喜通关《大时代》","good"); }
 }
 
 function nextTurn(){
   if(!player.role){ log("请先选择身份并开始游戏","warn"); return; }
-  if(game.isOver){ log("游戏已结束，请刷新页面重新开始","warn"); return; }
+  if(game.isOver){ log("游戏已结束，请重新开始","warn"); return; }
   game.turn++; game.year++;
   player.ap = player.apMax; // 恢复行动点
+  // 回合随机事件
   triggerEvents();
-  player.health = clamp(player.health + 3 + (player.role.tag==="scientist"?1:0), 0, 120);
+  // 每回合自然恢复少量健康
+  player.health = clamp(player.health + 3 + (player.role.tag==="doctor"?3:0), 0, 120);
   endTurnCheck();
   refresh();
 }
@@ -378,17 +382,25 @@ function checkVictory(){
   const has = name => player.assets.some(a=>a.includes(name));
   switch(player.role.tag){
     case "student": return r>=30 && c>=20 && (has("实验室")||f>=50000);
-    case "trader":  return f>=1000000/10; // 缩放
+    case "trader":  return f>=10000000/10; // 原设千万元，这里按原型缩放10倍
     case "mafia":   return c>=120 && r>=25;
     case "realty":  return player.assets.filter(a=>a.includes("地块")).length>=4 && f>=300000/10;
     case "idol":    return c>=80 && r>=60 && f>=200000/10;
     case "martial": return c>=70 && r>=50;
     case "official":return r>=70 && c>=90;
+    case "reporter":return r>=65 && c>=70;
     case "factory": return f>=500000/10 && has("中型工厂");
+    case "doctor":  return r>=70 && c>=60;
     case "lawyer":  return f>=300000/10 && r>=60;
+    case "writer":  return r>=60 && f>=120000/10;
     case "scientist":return r>=75 && f>=200000/10;
-    case "actor":   return r>=70 && c>=80;
+    case "gambler": return f>=1000000/10;
     case "smuggler":return f>=500000/10 && c>=80;
+    case "painter": return r>=65 && f>=300000/10;
+    case "actor":   return r>=70 && c>=80;
+    case "teacher": return r>=60 && c>=60;
+    case "fisher":  return f>=200000/10 && player.assets.some(a=>a.includes("渔船"));
+    case "farmer":  return f>=200000/10 && player.assets.some(a=>a.includes("农田"));
   }
   return false;
 }
@@ -402,7 +414,7 @@ function consumeHealth(base=2){ player.health = clamp(player.health - base, 0, 1
 
 el("#btnRest").onclick = ()=>{
   if(!needAP(1)) return;
-  const gain = 10 + (player.role.tag==="scientist"?2:0);
+  const gain = 10 + (player.role.tag==="doctor"?5:0);
   player.health = clamp(player.health + gain, 0, 120);
   log(`休整恢复健康 +${gain}`,"good");
   refresh();
@@ -414,7 +426,7 @@ el("#btnBiz").onclick = ()=>{
   const amt = +el("#bizAmt").value||0;
   if(amt<=0 || amt>player.funds){ log("做生意投入金额非法或不足","warn"); return; }
   player.funds -= amt;
-  const boost = (player.reputation*0.002 + player.contacts*0.001);
+  const boost = (player.reputation*0.002 + player.contacts*0.001); // 小幅正偏
   let roi = rnd(-0.2, 0.6 + boost);
   if(player.role.tag==="factory") roi += 0.05;
   const profit = Math.round(amt * roi);
@@ -431,6 +443,7 @@ el("#btnStock").onclick = ()=>{
   const amt = +el("#stockAmt").value||0;
   if(amt<=0 || amt>player.funds){ log("炒股金额非法或不足","warn"); return; }
   player.funds -= amt;
+  // 情绪中枢影响
   let base = { "-2":[-0.5,0.3], "-1":[-0.45,0.5], "0":[-0.4,0.6], "1":[-0.3,0.7], "2":[-0.2,0.8] }[String(game.mood)];
   let roi = rnd(base[0], base[1]);
   const profit = Math.round(amt*roi);
@@ -447,7 +460,7 @@ el("#btnGamble").onclick = ()=>{
   const amt = +el("#gambleAmt").value||0;
   if(amt<=0 || amt>player.funds){ log("赌注非法或不足","warn"); return; }
   let winRate = 0.45;
-  if(player.role.tag==="gambler" || player.role.tag==="mafia") winRate += 0.1; // 这里只对黑道加成
+  if(player.role.tag==="gambler" || player.role.tag==="mafia") winRate += 0.1;
   const win = Math.random()<winRate;
   const mult = win ? rnd(0.5,1.5) : -rnd(0.3,1.0);
   const delta = Math.round(amt*mult);
@@ -463,6 +476,7 @@ el("#btnBuyLand").onclick = ()=>{
   if(!needAP(1)) return;
   const [name,priceStr] = el("#landType").value.split("|");
   const price = +priceStr;
+  // 地产商折扣
   const final = Math.round(price * (player.role.tag==="realty"?0.85:1));
   if(player.funds<final){ log("资金不足，无法买地皮","warn"); return; }
   player.funds -= final;
@@ -472,17 +486,21 @@ el("#btnBuyLand").onclick = ()=>{
   refresh();
 };
 
-// 卖资产
+// 卖资产（简单按估值）
 el("#btnSellAsset").onclick = ()=>{
   if(!needAP(1)) return;
   if(player.assets.length===0){ log("没有可出售的资产","warn"); return; }
+  // 估值规则
   const priceOf = name=>{
     if(name.includes("市区地块")) return rndi(18000,30000);
     if(name.includes("郊区地块")) return rndi(6000,15000);
     if(name.includes("中型工厂")) return rndi(20000,40000);
     if(name.includes("古董")) return rndi(3000,12000);
+    if(name.includes("渔船")) return rndi(8000,16000);
+    if(name.includes("农田")) return rndi(4000,9000);
     return rndi(2000,8000);
   };
+  // 卖出最后一项（原型简单化，也可弹窗选择）
   const asset = player.assets.pop();
   const val = priceOf(asset);
   player.funds += val;
@@ -497,7 +515,7 @@ el("#btnStudy").onclick = ()=>{
   if(player.funds<cost){ log("进修需要资金不足","warn"); return; }
   player.funds -= cost;
   let repGain = 4, contGain = 2;
-  if(["student","scientist","lawyer"].includes(player.role.tag)) repGain += 2;
+  if(player.role.tag==="student"||player.role.tag==="scientist"||player.role.tag==="lawyer"||player.role.tag==="doctor") repGain += 2;
   player.reputation += repGain;
   player.contacts += contGain;
   consumeHealth(2);
@@ -548,11 +566,12 @@ el("#btnBorrow").onclick = ()=>{
   refresh();
 };
 
-// 还贷（优先最早一笔）
+// 还贷（优先还最早一笔）
 el("#btnRepay").onclick = ()=>{
   if(player.debt.length===0){ log("当前无负债","warn"); return; }
+  // 无消耗 AP，按总额偿还
   const d = player.debt[0];
-  const total = Math.round(d.amount*(1)); // 已在回合末计息
+  const total = Math.round(d.amount*(1)); // 当前回合前已计息
   if(player.funds<total){ log(`资金不足以偿还首笔债务：需 ${fmtMoney(total)}`,"warn"); return; }
   player.funds -= total;
   player.debt.shift();
